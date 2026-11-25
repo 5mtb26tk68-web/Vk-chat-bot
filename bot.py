@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import time
 import threading
@@ -19,13 +20,21 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-TOKEN = os.environ.get("VK_TOKEN")
-GROUP_ID = int(os.environ.get("VK_GROUP_ID"))
+TOKEN = os.environ.get("VK_TOKEN", "").strip()
+GROUP_ID = int(os.environ.get("VK_GROUP_ID", "0").strip())
 DB_FILE = "db.json"
+
+print(f"Старт бота для группы ID: {GROUP_ID}", flush=True)
 
 vk_session = vk_api.VkApi(token=TOKEN)
 vk = vk_session.get_api()
-longpoll = VkBotLongPoll(vk_session, GROUP_ID)
+
+try:
+    longpoll = VkBotLongPoll(vk_session, GROUP_ID)
+    print("Успешное подключение к Long Poll ВК!", flush=True)
+except Exception as e:
+    print(f"ОШИБКА ПОДКЛЮЧЕНИЯ К ВК: {e}", flush=True)
+    sys.exit(1)
 
 def load_db():
     if os.path.exists(DB_FILE):
@@ -38,12 +47,12 @@ def save_db(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 db = load_db()
-print("Бот успешно запущен на Render!")
 last_save = time.time()
 
 while True:
     try:
         for event in longpoll.listen():
+            print(f"Получено событие: {event.type}", flush=True)
             if time.time() - last_save > 60:
                 save_db(db)
                 last_save = time.time()
@@ -51,5 +60,5 @@ while True:
             if event.type == VkBotEventType.MESSAGE_NEW:
                 handle_message(vk, db, save_db, event.obj.message)
     except Exception as e:
-        print("Ошибка сети:", e)
+        print(f"ОШИБКА В ЦИКЛЕ: {e}", flush=True)
         time.sleep(5)
