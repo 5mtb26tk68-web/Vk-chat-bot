@@ -24,8 +24,6 @@ TOKEN = os.environ.get("VK_TOKEN", "").strip()
 GROUP_ID = int(os.environ.get("VK_GROUP_ID", "0").strip())
 DB_FILE = "db.json"
 
-print(f"Старт бота для группы ID: {GROUP_ID}", flush=True)
-
 vk_session = vk_api.VkApi(token=TOKEN)
 vk = vk_session.get_api()
 
@@ -37,10 +35,18 @@ except Exception as e:
     sys.exit(1)
 
 def load_db():
+    data = {}
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"users": {}, "chats": {}}
+            try:
+                data = json.load(f)
+            except Exception:
+                data = {}
+    if "users" not in data:
+        data["users"] = {}
+    if "chats" not in data:
+        data["chats"] = {}
+    return data
 
 def save_db(data):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -52,7 +58,6 @@ last_save = time.time()
 while True:
     try:
         for event in longpoll.listen():
-            print(f"Получено событие: {event.type}", flush=True)
             if time.time() - last_save > 60:
                 save_db(db)
                 last_save = time.time()
