@@ -1,18 +1,18 @@
 import os
-import sys
 import json
 import time
 import threading
 import vk_api
 from flask import Flask
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
-from commands import handle_message
+from mod_en import handle_mod
+from fun_en import handle_fun, send_help_menu
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "VK Bot is running 24/7!"
+    return "Full Chat Manager 24/7 is running!"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
@@ -26,13 +26,7 @@ DB_FILE = "db.json"
 
 vk_session = vk_api.VkApi(token=TOKEN)
 vk = vk_session.get_api()
-
-try:
-    longpoll = VkBotLongPoll(vk_session, GROUP_ID)
-    print("Успешное подключение к Long Poll ВК!", flush=True)
-except Exception as e:
-    print(f"ОШИБКА ПОДКЛЮЧЕНИЯ К ВК: {e}", flush=True)
-    sys.exit(1)
+longpoll = VkBotLongPoll(vk_session, GROUP_ID)
 
 def load_db():
     data = {}
@@ -42,10 +36,9 @@ def load_db():
                 data = json.load(f)
             except Exception:
                 data = {}
-    if "users" not in data:
-        data["users"] = {}
-    if "chats" not in data:
-        data["chats"] = {}
+    for k in ["users", "chats", "clans"]:
+        if k not in data:
+            data[k] = {}
     return data
 
 def save_db(data):
@@ -53,6 +46,7 @@ def save_db(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 db = load_db()
+print("Full Chat Manager запущен!", flush=True)
 last_save = time.time()
 
 while True:
@@ -63,7 +57,16 @@ while True:
                 last_save = time.time()
 
             if event.type == VkBotEventType.MESSAGE_NEW:
-                handle_message(vk, db, save_db, event.obj.message)
+                msg = event.obj.message
+                if handle_mod(vk, db, save_db, msg):
+                    continue
+                handle_fun(vk, db, save_db, msg)
+
+            elif event.type == VkBotEventType.MESSAGE_EVENT:
+                ev = event.obj
+                payload = ev.get("payload", {})
+                if "menu" in payload:
+                    send_help_menu(vk, ev["peer_id"], payload["menu"], ev["event_id"], ev["user_id"])
     except Exception as e:
-        print(f"ОШИБКА В ЦИКЛЕ: {e}", flush=True)
+        print(f"Ошибка цикла: {e}", flush=True)
         time.sleep(5)
