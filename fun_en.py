@@ -185,7 +185,8 @@ def handle_fun(vk, db, save_db, msg_obj):
         if bet <= 0 or bet > user["balance"]:
             send_msg(vk, peer_id, "❌ Insufficient funds.")
             return
-        roll = random.choices(["red", "black", "green"], weights=).pop(0)
+                roll = random.choices(["red", "black", "green"], weights=[48, 48, 4]).pop(0)
+
         if col == roll:
             win = bet * (13 if roll == "green" else 1)
             user["balance"] += win
