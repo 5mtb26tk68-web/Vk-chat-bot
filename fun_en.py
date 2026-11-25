@@ -59,10 +59,8 @@ def handle_fun(vk, db, save_db, msg_obj):
     peer_id = msg_obj["peer_id"]
     from_id = msg_obj["from_id"]
     text = msg_obj.get("text", "").strip()
-
     if from_id < 0 or not text.startswith("/"):
         return
-
     parts = text[1:].split()
     if not parts:
         return
@@ -74,13 +72,11 @@ def handle_fun(vk, db, save_db, msg_obj):
 
     if cmd in ["help", "commands", "menu"]:
         send_help_menu(vk, peer_id, "main")
-
     elif cmd in ["profile", "balance", "bal"]:
         vip_tag = "⭐ VIP" if user.get("vip") else "Regular"
         partner = get_name(vk, user["partner"]) if user.get("partner") else "None"
         clan = user.get("clan") or "None"
         send_msg(vk, peer_id, f"👤 {get_name(vk, from_id)} [{vip_tag}]\n💵 Cash: {user['balance']} | 🏦 Bank: {user.get('bank', 0)}\n🏰 Clan: {clan} | 💍 Married: {partner}\n⭐ Rep: {user.get('rep', 0)}")
-
     elif cmd == "bonus":
         if now - user["last_bonus"] < 3600:
             send_msg(vk, peer_id, f"⏳ Next bonus in {int((3600 - (now - user['last_bonus'])) // 60) + 1} min.")
@@ -90,7 +86,6 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["last_bonus"] = now
             save_db(db)
             send_msg(vk, peer_id, f"🎁 Bonus +{rew} coins! Balance: {user['balance']}")
-
     elif cmd == "work":
         if now - user.get("last_work", 0) < 600:
             send_msg(vk, peer_id, f"⏳ Rest for {int((600 - (now - user['last_work'])) // 60) + 1} min.")
@@ -100,16 +95,12 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["last_work"] = now
             save_db(db)
             send_msg(vk, peer_id, f"💼 You worked and earned +{pay} coins! Balance: {user['balance']}")
-
     elif cmd == "bank":
         if len(args) < 2:
-            send_msg(vk, peer_id, "❌ Usage: /bank put 500 or /bank take 500")
-            return
-        act = args.pop(0).lower()
-        amt_s = args.pop(0)
+            return send_msg(vk, peer_id, "❌ Usage: /bank put 500 or /bank take 500")
+        act, amt_s = args.pop(0).lower(), args.pop(0)
         if not amt_s.isdigit():
-            send_msg(vk, peer_id, "❌ Usage: /bank put 500 or /bank take 500")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /bank put 500 or /bank take 500")
         amt = int(amt_s)
         if act == "put" and 0 < amt <= user["balance"]:
             user["balance"] -= amt
@@ -123,28 +114,23 @@ def handle_fun(vk, db, save_db, msg_obj):
             send_msg(vk, peer_id, f"💵 Cash balance: {user['balance']} coins.")
         else:
             send_msg(vk, peer_id, "❌ Insufficient funds.")
-
     elif cmd == "pay":
         tid = extract_target(msg_obj, args)
         amt = next((int(a) for a in args if a.isdigit()), None)
         if not tid or not amt or tid == from_id or tid < 0 or amt <= 0 or amt > user["balance"]:
-            send_msg(vk, peer_id, "❌ Usage: /pay @user 500")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /pay @user 500")
         get_user(db, tid)["balance"] += amt
         user["balance"] -= amt
         save_db(db)
         send_msg(vk, peer_id, f"✅ Sent {amt} coins -> {get_name(vk, tid)}")
-
     elif cmd == "rob":
         tid = extract_target(msg_obj, args)
         if not tid or tid == from_id or tid < 0 or now - user.get("last_rob", 0) < 1800:
-            send_msg(vk, peer_id, "❌ Usage: /rob @user (30 min cooldown)")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /rob @user (30 min cooldown)")
         victim = get_user(db, tid)
         user["last_rob"] = now
         if victim["balance"] < 100:
-            send_msg(vk, peer_id, "🤷 Target has no cash on hand.")
-            return
+            return send_msg(vk, peer_id, "🤷 Target has no cash on hand.")
         if random.randint(1, 100) <= 40:
             loot = random.randint(50, min(600, victim["balance"] // 2))
             victim["balance"] -= loot
@@ -155,21 +141,17 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["balance"] -= fine
             send_msg(vk, peer_id, f"🚓 Caught by police! Fined {fine} coins.")
         save_db(db)
-
     elif cmd == "top":
-        top_u = sorted(db["users"].items(), key=lambda x: x[1]["balance"] + x[1].get("bank", 0), reverse=True)[:10]
+        top_u = sorted(db["users"].items(), key=lambda x: x["balance"] + x.get("bank", 0), reverse=True)[:10]
         lines = ["🏆 TOP 10 RICHEST:"] + [f"{i}. {get_name(vk, int(uid))} — {u['balance'] + u.get('bank', 0)} coins" for i, (uid, u) in enumerate(top_u, 1)]
         send_msg(vk, peer_id, "\n".join(lines))
-
     elif cmd == "casino":
         if not args:
-            send_msg(vk, peer_id, "❌ Usage: /casino 300 or /casino all")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /casino 300 or /casino all")
         b_arg = args.pop(0).lower()
         bet = user["balance"] if b_arg == "all" else (int(b_arg) if b_arg.isdigit() else 0)
         if bet <= 0 or bet > user["balance"]:
-            send_msg(vk, peer_id, "❌ Invalid bet.")
-            return
+            return send_msg(vk, peer_id, "❌ Invalid bet.")
         r = random.randint(1, 100)
         if r <= 45:
             user["balance"] += bet
@@ -181,21 +163,16 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["balance"] -= bet
             send_msg(vk, peer_id, f"📉 Lost -{bet} coins. Balance: {user['balance']}")
         save_db(db)
-
     elif cmd == "roulette":
         if len(args) < 2:
-            send_msg(vk, peer_id, "❌ Usage: /roulette [red/black/green] 200")
-            return
-        col = args.pop(0).lower()
-        bet_s = args.pop(0)
+            return send_msg(vk, peer_id, "❌ Usage: /roulette [red/black/green] 200")
+        col, bet_s = args.pop(0).lower(), args.pop(0)
         if not bet_s.isdigit() or col not in ["red", "black", "green"]:
-            send_msg(vk, peer_id, "❌ Usage: /roulette [red/black/green] 200")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /roulette [red/black/green] 200")
         bet = int(bet_s)
         if bet <= 0 or bet > user["balance"]:
-            send_msg(vk, peer_id, "❌ Insufficient funds.")
-            return
-        roll = random.choices(["red", "black", "green"], weights=[48, 48, 4]).pop(0)
+            return send_msg(vk, peer_id, "❌ Insufficient funds.")
+        roll = random.choices(["red", "black", "green"], weights=).pop(0)
         if col == roll:
             win = bet * (13 if roll == "green" else 1)
             user["balance"] += win
@@ -204,15 +181,15 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["balance"] -= bet
             send_msg(vk, peer_id, f"🎡 Landed on {roll.upper()}. Lost -{bet} coins.")
         save_db(db)
-
     elif cmd == "dice":
         if len(args) < 2:
-            send_msg(vk, peer_id, "❌ Usage: /dice [1-6] 200")
-            return
-        num_s = args.pop(0)
-        bet_s = args.pop(0)
+            return send_msg(vk, peer_id, "❌ Usage: /dice [1-6] 200")
+        num_s, bet_s = args.pop(0), args.pop(0)
         if not num_s.isdigit() or not bet_s.isdigit():
-            send_msg(vk, peer_id, "❌ Usage: /dice [1-6] 200")
-            return
+            return send_msg(vk, peer_id, "❌ Usage: /dice [1-6] 200")
         num, bet = int(num_s), int(bet_s)
         if not (1 <= num <= 6) or bet <= 0 or bet > user["balance"]:
+            return send_msg(vk, peer_id, "❌ Pick 1-6 and valid bet.")
+        c = random.randint(1, 6)
+        if num == c:
+            user["balance"] += bet * 4
