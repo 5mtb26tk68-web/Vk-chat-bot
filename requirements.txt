@@ -1,2 +1,2 @@
-vk-api==11.9.9
-flask==3.0.3
+vk_api
+flask
