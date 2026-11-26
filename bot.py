@@ -1,6 +1,7 @@
-import vk_api, os, json, re, time, random, threading, traceback
+import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+import json, time, os, re, random, threading, traceback
 
 TOKEN = os.environ.get("VK_TOKEN", "")
 OWNER_ID = 734176092
@@ -10,34 +11,7 @@ PREFIX = "!"
 MAT_WORDS = ["хуй", "пизд", "ебан", "бляд", "сука", "долбо"]
 if not TOKEN:
     print("NO TOKEN"); raise SystemExit(1)
-
-BUSINESSES = {"ларёк":(10000,800),"кафе":(50000,4500),"магазин":(200000,20000),"ресторан":(750000,80000),"завод":(2500000,280000),"банк":(10000000,1200000),"нефтянка":(50000000,6500000),"космодром":(200000000,30000000)}
-CARS = {"велик":5000,"самокат":15000,"жигуль":80000,"тойота":500000,"бмв":2000000,"мерседес":5000000,"ламборгини":25000000,"бугатти":100000000}
-HOUSES = {"палатка":10000,"квартира":250000,"дом":1500000,"особняк":15000000,"замок":100000000,"остров":500000000}
-YACHTS = {"лодка":50000,"катер":500000,"яхта":10000000,"мега-яхта":100000000}
-PHONES = {"нокия":5000,"xiaomi":25000,"iphone":150000,"samsung":300000}
-PETS = {"кот":50000,"собака":75000,"попугай":30000,"дракон":5000000}
-FARMS = {"огород":100000,"теплица":500000,"ранчо":2000000}
-CASES = {"деревянный":(1000,500,5000),"железный":(10000,5000,50000),"золотой":(100000,50000,500000),"платиновый":(1000000,500000,5000000),"алмазный":(10000000,5000000,50000000)}
-MINE = {"камень":(10,100),"уголь":(50,300),"железо":(200,1000),"серебро":(1000,5000),"золото":(5000,25000),"алмаз":(25000,150000)}
-FISH = {"карась":(5,50),"окунь":(20,150),"щука":(100,800),"сом":(500,3000),"осётр":(3000,20000),"золотая рыбка":(50000,250000)}
-HUNT = {"заяц":(100,500),"лиса":(500,2000),"волк":(2000,8000),"медведь":(10000,50000),"тигр":(50000,250000)}
-TITLES = {"новичок":0,"работяга":100000,"бизнесмен":1000000,"олигарх":10000000,"магнат":100000000,"легенда":1000000000}
-SHOPS = [("business",BUSINESSES),("car",CARS),("house",HOUSES),("yacht",YACHTS),("phone",PHONES),("pet",PETS),("farm",FARMS)]
-ACHIEVES = {"first_msg":("💬 Первое сообщение", lambda u: u["messages_count"] >= 1),
-"rich":("💰 Миллионер", lambda u: u["balance"] >= 1000000),
-"lvl10":("📊 10 уровень", lambda u: u["level"] >= 10),
-"lvl25":("📊 25 уровень", lambda u: u["level"] >= 25),
-"gamer":("🎮 10 побед", lambda u: u["games_won"] >= 10),
-"collector":("📦 Коллекционер", lambda u: sum(u["inventory"].values()) >= 10),
-"married":("💍 В браке", lambda u: u["married_to"] != 0),
-"boss":("🏢 Бизнесмен", lambda u: u["business"] is not None)}
-NEW_USER = {"balance":1000,"bank":0,"donate":0,"xp":0,"level":0,"warns":0,"reputation":0,
-"business":None,"business_time":0,"work_time":0,"daily_time":0,"deposit":0,"deposit_time":0,
-"car":None,"house":None,"yacht":None,"phone":None,"pet":None,"pet_hunger":100,
-"pet_happiness":100,"farm":None,"farm_time":0,"married_to":0,"clan_id":0,"inventory":{},
-"achievements":[],"muted_until":0,"messages_count":0,"games_won":0,"games_lost":0,
-"title":None,"spin_time":0,"friends":[],"mat_count":0,"register_time":0}
+print("OK owner:", OWNER_ID)
 
 DB_FILE = "db.json"
 def load_db():
@@ -46,6 +20,13 @@ def load_db():
 def save_db():
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(DB, f, ensure_ascii=False)
 DB = load_db()
+
+NEW_USER = {"balance":1000,"bank":0,"donate":0,"xp":0,"level":0,"warns":0,"reputation":0,
+"business":None,"business_time":0,"work_time":0,"daily_time":0,"deposit":0,"deposit_time":0,
+"car":None,"house":None,"yacht":None,"phone":None,"pet":None,"pet_hunger":100,
+"pet_happiness":100,"farm":None,"farm_time":0,"married_to":0,"clan_id":0,"inventory":{},
+"achievements":[],"muted_until":0,"messages_count":0,"games_won":0,"games_lost":0,
+"title":None,"spin_time":0,"friends":[],"mat_count":0,"register_time":0}
 
 def get_user(uid):
     s = str(uid)
@@ -61,6 +42,28 @@ def is_owner(u): return u == OWNER_ID
 def fmt(n):
     try: return f"{int(n):,}".replace(",", " ")
     except: return str(n)
+
+BUSINESSES = {"ларёк":(10000,800),"кафе":(50000,4500),"магазин":(200000,20000),"ресторан":(750000,80000),"завод":(2500000,280000),"банк":(10000000,1200000),"нефтянка":(50000000,6500000),"космодром":(200000000,30000000)}
+CARS = {"велик":5000,"самокат":15000,"жигуль":80000,"тойота":500000,"бмв":2000000,"мерседес":5000000,"ламборгини":25000000,"бугатти":100000000}
+HOUSES = {"палатка":10000,"квартира":250000,"дом":1500000,"особняк":15000000,"замок":100000000,"остров":500000000}
+YACHTS = {"лодка":50000,"катер":500000,"яхта":10000000,"мега-яхта":100000000}
+PHONES = {"нокия":5000,"xiaomi":25000,"iphone":150000,"samsung":300000}
+PETS = {"кот":50000,"собака":75000,"попугай":30000,"дракон":5000000}
+FARMS = {"огород":100000,"теплица":500000,"ранчо":2000000}
+CASES = {"деревянный":(1000,500,5000),"железный":(10000,5000,50000),"золотой":(100000,50000,500000),"платиновый":(1000000,500000,5000000),"алмазный":(10000000,5000000,50000000)}
+MINE = {"камень":(10,100),"уголь":(50,300),"железо":(200,1000),"серебро":(1000,5000),"золото":(5000,25000),"алмаз":(25000,150000)}
+FISH = {"карась":(5,50),"окунь":(20,150),"щука":(100,800),"сом":(500,3000),"осётр":(3000,20000),"золотая рыбка":(50000,250000)}
+HUNT = {"заяц":(100,500),"лиса":(500,2000),"волк":(2000,8000),"медведь":(10000,50000),"тигр":(50000,250000)}
+TITLES = {"новичок":0,"работяга":100000,"бизнесмен":1000000,"олигарх":10000000,"магнат":100000000,"легенда":1000000000}
+ACHIEVES = {"first_msg":("💬 Первое сообщение", lambda u: u["messages_count"] >= 1),
+"rich":("💰 Миллионер", lambda u: u["balance"] >= 1000000),
+"lvl10":("📊 10 уровень", lambda u: u["level"] >= 10),
+"lvl25":("📊 25 уровень", lambda u: u["level"] >= 25),
+"gamer":("🎮 10 побед", lambda u: u["games_won"] >= 10),
+"collector":("📦 Коллекционер", lambda u: sum(u["inventory"].values()) >= 10),
+"married":("💍 В браке", lambda u: u["married_to"] != 0),
+"boss":("🏢 Бизнесмен", lambda u: u["business"] is not None)}
+
 def check_achieves(u):
     got = []
     for k, (name, cond) in ACHIEVES.items():
@@ -136,7 +139,7 @@ def send(peer_id, msg, kb=None):
     try: vk.messages.send(**kw)
     except Exception as e: print("Send err:", e)
 
-HELP = ("🌟 Astra v8 ИМБА\n\n💰 !баланс !работа !бонус !бизнесы !купить !продать !доход !банк !положить !снять !депозит !забрать !перевод !донат\n"
+HELP = ("🌟 Astra v9 ИМБА\n\n💰 !баланс !работа !бонус !бизнесы !купить !продать !доход !банк !положить !снять !депозит !забрать !перевод !донат\n"
 "🏪 !машины !дома !яхты !телефоны !питомцы !фермы !кейсы !кейс <имя> !инвентарь\n"
 "⛏️ !шахта !рыбалка !охота !ферма !покормить !поиграть\n"
 "🎮 !казино !монетка !кости !рулетка !краш !угадай !кнб !дуэль !лотерея !колесо\n"
@@ -162,7 +165,7 @@ def handle(peer_id, user_id, cmd, args):
     if cmd in ("помощь","help","команды"):
         return send(peer_id, HELP, get_admin_kb() if is_admin(user_id) else get_kb())
     if cmd in ("о боте","about"):
-        return send(peer_id, f"🌟 Astra v8\n👑 [id{OWNER_ID}]\n👥 {len(DB['users'])} 🎁 {len(DB['promo'])} 🏰 {len(DB['clans'])}")
+        return send(peer_id, f"🌟 Astra v9\n👑 [id{OWNER_ID}]\n👥 {len(DB['users'])} 🎁 {len(DB['promo'])} 🏰 {len(DB['clans'])}")
     if cmd in ("баланс","balance"):
         cr = "\n👑 ВЛАДЕЛЕЦ" if tid == OWNER_ID else ""
         return send(peer_id, f"💰 [id{tid}|]{cr}\n💵 {fmt(t['balance'])} ₽\n🏦 {fmt(t['bank'])} ₽\n💎 {fmt(t['donate'])}\n📊 Ур.{t['level']} ({t['xp']} XP)\n⭐ {t['reputation']}\n🏢 {t['business'] or '—'}\n🚗 {t['car'] or '—'} | 🏠 {t['house'] or '—'}\n⚠️ {t['warns']}/3 | 💬 {t['messages_count']}", get_kb())
@@ -181,7 +184,7 @@ def handle(peer_id, user_id, cmd, args):
         return send(peer_id, "🏢\n"+"\n".join(f"• {n} {fmt(p[0])} ₽ ({fmt(p[1])}/ч)" for n,p in BUSINESSES.items())+"\n!купить <имя>")
     if cmd in ("купить","buy"):
         n = args.lower().strip()
-        for key, d in SHOPS:
+        for key, d in [("business",BUSINESSES),("car",CARS),("house",HOUSES),("yacht",YACHTS),("phone",PHONES),("pet",PETS),("farm",FARMS)]:
             if n in d:
                 price = d[n][0] if isinstance(d[n], tuple) else d[n]
                 if key == "business" and u["business"]: return send(peer_id, "Уже есть бизнес")
@@ -488,28 +491,4 @@ def handle(peer_id, user_id, cmd, args):
         p = args.split()
         if len(p) < 2: return send(peer_id, "❌")
         get_user(extract_user(p[0]))["balance"] += int(p[1]); save_db()
-        return send(peer_id, f"✅ +{fmt(p[1])} [id{extract_user(p[0])}]")
-    if cmd in ("забратьбаланс","takebalance"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p) < 2: return send(peer_id, "❌")
-        tt = get_user(extract_user(p[0])); tt["balance"] = max(0,tt["balance"]-int(p[1])); save_db()
-        return send(peer_id, f"✅ -{fmt(p[1])}")
-    if cmd in ("выдатьдонат","givedonate"):
-        if not is_owner(user_id): return send(peer_id, "🚫 Только владелец")
-        p = args.split()
-        if len(p) < 2: return send(peer_id, "❌")
-        get_user(extract_user(p[0]))["donate"] += int(p[1]); save_db()
-        return send(peer_id, f"💎 +{fmt(p[1])} [id{extract_user(p[0])}]")
-    if cmd in ("забратьдонат","takedonate"):
-        if not is_owner(user_id): return send(peer_id, "🚫 Только владелец")
-        p = args.split()
-        if len(p) < 2: return send(peer_id, "❌")
-        tt = get_user(extract_user(p[0])); tt["donate"] = max(0,tt["donate"]-int(p[1])); save_db()
-        return send(peer_id, f"💎 -{fmt(p[1])}")
-    if cmd in ("выдатьуровень","givelevel"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p) < 2: return send(peer_id, "❌")
-        tt = get_user(extract_user(p[0])); tt["level"] = int(p[1]); tt["xp"] = int(p[1])**2; save_db()
-        return send(peer_id, f"✅ у
+        return send(peer_id, f"✅
