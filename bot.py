@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Full Chat Manager 24/7 is running!"
+    return "Astra Chat Manager 24/7 is running!"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
@@ -36,7 +36,7 @@ def load_db():
                 data = json.load(f)
             except Exception:
                 data = {}
-    for k in ["users", "chats", "clans"]:
+    for k in ["users", "chats", "clans", "promos"]:
         if k not in data:
             data[k] = {}
     return data
@@ -46,7 +46,7 @@ def save_db(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 db = load_db()
-print("Full Chat Manager запущен!", flush=True)
+print("Astra Chat Manager запущен!", flush=True)
 last_save = time.time()
 
 while True:
