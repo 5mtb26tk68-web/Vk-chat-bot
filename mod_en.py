@@ -64,7 +64,7 @@ def get_priority(vk, chat, peer_id, user_id):
 
 def get_name(vk, chat, user_id):
     if user_id < 0:
-        return "Бот"
+        return "Astra"
     m = get_member(chat, user_id)
     u = vk.users.get(user_ids=user_id).pop(0)
     disp = m["nick"] if m.get("nick") else f"{u['first_name']} {u['last_name']}"
@@ -142,16 +142,16 @@ def handle_mod(vk, db, save_db, msg_obj):
     args = parts
 
     if cmd == "rules" and not args:
-        send_msg(vk, peer_id, f"📜 ПРАВИЛА БЕСЕДЫ:\n━━━━━━━━━━━━━━━━━━\n{chat['rules']}")
+        send_msg(vk, peer_id, f"📜 Astra • Правила беседы:\n━━━━━━━━━━━━━━━━━━\n{chat['rules']}")
         return True
     elif cmd == "stats":
         c_lvl = member["xp"] // 500 + 1
         r_name = member.get("role") or "Участник"
-        send_msg(vk, peer_id, f"📊 КАРТОЧКА УЧАСТНИКА\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: {get_name(vk, chat, from_id)}\n🏷 Роль: {r_name} [Приоритет: {prio}/100]\n🔥 Уровень актива: {c_lvl} ({member['xp']} XP)\n💬 Сообщений: {member['msgs']}\n⚠️ Предупреждений: {member['warns']}/3")
+        send_msg(vk, peer_id, f"📊 Astra • Карточка участника\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: {get_name(vk, chat, from_id)}\n🏷 Роль: {r_name} [Приоритет: {prio}/100]\n🔥 Уровень актива: {c_lvl} ({member['xp']} XP)\n💬 Сообщений: {member['msgs']}\n⚠️ Предупреждений: {member['warns']}/3")
         return True
     elif cmd == "roles":
-        sorted_r = sorted(chat["roles"].items(), key=lambda item: item.pop(1) if False else list(item).pop(), reverse=True)
-        lines = ["🏷 ИЕРАРХИЯ РОЛЕЙ БЕСЕДЫ (1–100):", "━━━━━━━━━━━━━━━━━━"]
+        sorted_r = sorted(chat["roles"].items(), key=lambda item: list(item).pop(), reverse=True)
+        lines = ["🏷 Astra • Иерархия ролей (1–100):", "━━━━━━━━━━━━━━━━━━"]
         for r_name, r_p in sorted_r:
             holders = [get_name(vk, chat, int(u)) for u, m in chat["members"].items() if m.get("role") == r_name]
             h_str = ", ".join(holders) if holders else "пусто"
@@ -159,21 +159,21 @@ def handle_mod(vk, db, save_db, msg_obj):
         send_msg(vk, peer_id, "\n".join(lines) if len(lines) > 2 else "🏷 Роли ещё не созданы.\nСоздать: /createrole [1-99] [Название]")
         return True
     elif cmd == "perms":
-        lines = ["🔐 ПРАВА ДОСТУПА К КОМАНДАМ:", "━━━━━━━━━━━━━━━━━━"]
+        lines = ["🔐 Astra • Права доступа:", "━━━━━━━━━━━━━━━━━━"]
         for c_name, req_p in sorted(chat["perms"].items(), key=lambda x: list(x).pop(), reverse=True):
             lines.append(f"▸ /{c_name} — от {req_p} приоритета")
         send_msg(vk, peer_id, "\n".join(lines))
         return True
     elif cmd == "topchat":
         top_m = sorted(chat["members"].items(), key=lambda x: list(x).pop()["msgs"], reverse=True)[:10]
-        lines = ["💬 ТОП-10 АКТИВНЫХ УЧАСТНИКОВ:", "━━━━━━━━━━━━━━━━━━"] + [f"{i}. {get_name(vk, chat, int(uid))} — {m['msgs']} сообщ." for i, (uid, m) in enumerate(top_m, 1)]
+        lines = ["💬 Astra • Топ-10 активных:", "━━━━━━━━━━━━━━━━━━"] + [f"{i}. {get_name(vk, chat, int(uid))} — {m['msgs']} сообщ." for i, (uid, m) in enumerate(top_m, 1)]
         send_msg(vk, peer_id, "\n".join(lines))
         return True
     elif cmd == "chatinfo":
         s_on = "ВКЛ ✅" if chat["silence"] else "ВЫКЛ ❌"
         l_on = "ВКЛ ✅" if chat["antilink"] else "ВЫКЛ ❌"
         m_on = "ВКЛ ✅" if chat["antimat"] else "ВЫКЛ ❌"
-        send_msg(vk, peer_id, f"⚙ ПАСПОРТ БЕСЕДЫ (АРИОН)\n━━━━━━━━━━━━━━━━━━\n🤫 Тихий режим: {s_on}\n🔗 Антиссылка: {l_on}\n🤬 Антимат: {m_on}\n🏷 Создано ролей: {len(chat['roles'])}\n⛔ В ЧС беседы: {len(chat['banned'])} чел.")
+        send_msg(vk, peer_id, f"⚙ Astra • Паспорт беседы\n━━━━━━━━━━━━━━━━━━\n🤫 Тихий режим: {s_on}\n🔗 Антиссылка: {l_on}\n🤬 Антимат: {m_on}\n🏷 Создано ролей: {len(chat['roles'])}\n⛔ В ЧС беседы: {len(chat['banned'])} чел.")
         return True
     elif cmd == "nick":
         member["nick"] = " ".join(args)[:25] if args else None
@@ -200,7 +200,7 @@ def handle_mod(vk, db, save_db, msg_obj):
             return True
         chat["perms"][target_cmd] = int(new_p_s)
         save_db(db)
-        send_msg(vk, peer_id, f"🔐 Доступ к команде /{target_cmd} изменён на {new_p_s}+ приоритет!")
+        send_msg(vk, peer_id, f"🔐 Доступ к /{target_cmd} изменён на {new_p_s}+ приоритет!")
         return True
 
     if cmd == "createrole":
@@ -218,7 +218,7 @@ def handle_mod(vk, db, save_db, msg_obj):
             return True
         chat["roles"][r_name] = r_prio
         save_db(db)
-        send_msg(vk, peer_id, f"✅ Роль «{r_name}» с приоритетом [{r_prio}/100] успешно создана!")
+        send_msg(vk, peer_id, f"✅ Роль «{r_name}» с приоритетом [{r_prio}/100] создана!")
         return True
 
     elif cmd == "delrole":
@@ -234,3 +234,6 @@ def handle_mod(vk, db, save_db, msg_obj):
             if m.get("role") == r_name:
                 m["role"] = None
         save_db(db)
+        send_msg(vk, peer_id, f"🗑 Роль «{r_name}» удалена.")
+        return True
+
