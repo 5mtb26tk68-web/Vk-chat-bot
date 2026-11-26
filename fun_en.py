@@ -9,12 +9,12 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 GROUP_ID = int(os.environ.get("VK_GROUP_ID", "0").strip())
 
 MENUS = {
-    "main": "⚡ ПАНЕЛЬ УПРАВЛЕНИЯ БОТОМ\n━━━━━━━━━━━━━━━━━━\nВыбери нужный раздел кнопками ниже, чтобы посмотреть список команд 👇",
-    "general": "👤 ОСНОВНОЕ И ПРОФИЛЬ\n━━━━━━━━━━━━━━━━━━\n▸ /profile — твой паспорт и баланс\n▸ /stats — ранг и активность в чате\n▸ /nick [имя] — сменить ник в беседе\n▸ /rules — правила текущего чата\n▸ /staff — список модераторов\n▸ /rep @юзер — повысить репутацию",
-    "economy": "💰 ЭКОНОМИКА И МАЙНИНГ\n━━━━━━━━━━━━━━━━━━\n▸ /bonus — награда раз в час\n▸ /work — подработка раз в 10 мин\n▸ /farm [buy / collect] — майнинг-фермы\n▸ /bank [put / take] [сумма] — сейф\n▸ /pay @юзер [сумма] — перевод монет\n▸ /rob @юзер — ограбить игрока\n▸ /top — топ-10 миллионеров",
-    "games": "🎰 ИГРЫ, БРАКИ И РП\n━━━━━━━━━━━━━━━━━━\n▸ /casino [ставка / all] — слоты (x2 / x5)\n▸ /roulette [red/black/green] [ставка]\n▸ /dice [1-6] [ставка] — кубик (x5)\n▸ /case — открыть лутбокс (500 монет)\n▸ /duel @юзер [ставка] — дуэль на монеты\n▸ /marry @юзер | /divorce — свадьба\n▸ /hug | /slap | /kiss @юзер — РП-действия",
-    "mod": "🛡 МОДЕРАЦИЯ (Ранги 1–7)\n━━━━━━━━━━━━━━━━━━\n▸ /mute @юзер [мин] | /unmute\n▸ /warn @юзер | /unwarn (2+ ранг)\n▸ /kick | /ban @юзер (3+ ранг)\n▸ /silence | /unsilence (4+ ранг)\n▸ /antilink | /all | /rules | /welcome\n▸ /setlvl @юзер [0-6] (6+ ранг)",
-    "vip": "👑 VIP, КЛАНЫ И СОЗДАТЕЛИ\n━━━━━━━━━━━━━━━━━━\n▸ /buyvip — купить VIP (10,000 монет, x2 доход)\n▸ /clan create [имя] | /clan join [имя]\n▸ /clan leave | /clan info\n\n🔰 ТОЛЬКО СОЗДАТЕЛЯМ ГРУППЫ:\n▸ /givemoney @юзер [сумма] — выдать монеты\n▸ /takemoney @юзер [сумма] — забрать монеты\n▸ /givevip @юзер | /takevip @юзер — выдать/снять VIP"
+    "main": "⚡ ПАНЕЛЬ УПРАВЛЕНИЯ ЧАТ-МЕНЕДЖЕРОМ\n━━━━━━━━━━━━━━━━━━\nВыбери нужный раздел кнопками ниже, чтобы увидеть полный список команд 👇",
+    "roles": "🏷 РОЛИ И ПРИОРИТЕТЫ (1–100)\n━━━━━━━━━━━━━━━━━━\n▸ /createrole [1-99] [Имя] — создать роль\n▸ /delrole [Имя] — удалить роль\n▸ /giverole @юзер [Имя] — выдать роль\n▸ /takerole @юзер — снять роль\n▸ /roles — иерархия ролей беседы\n▸ /perms — права доступа к командам\n▸ /setperm [команда] [1-100] — настроить доступ",
+    "mod": "🛡 МОДЕРАЦИЯ И ЗАЩИТА ЧАТА\n━━━━━━━━━━━━━━━━━━\n▸ /mute @юзер [мин] [причина] | /unmute\n▸ /warn @юзер [причина] | /unwarn\n▸ /kick | /ban @юзер [причина]\n▸ /cban | /cunban @юзер — ЧС беседы\n▸ /silence | /antilink | /antimat — защита\n▸ /all | /inactive | /rules | /welcome",
+    "general": "👤 ОСНОВНОЕ И СТАТИСТИКА\n━━━━━━━━━━━━━━━━━━\n▸ /profile — паспорт, баланс, бизнес\n▸ /stats — карточка, роль и опыт в чате\n▸ /topchat — топ-10 активных болтунов\n▸ /chatinfo — настройки защиты чата\n▸ /nick [имя] — сменить ник в беседе\n▸ /marry @юзер | /divorce | /rep @юзер",
+    "economy": "💰 ЭКОНОМИКА, ФЕРМЫ И БИЗНЕС\n━━━━━━━━━━━━━━━━━━\n▸ /bonus (1 час) | /work (10 мин)\n▸ /farm [buy / collect] — майнинг-фермы\n▸ /biz [buy / collect] — бизнес-империя\n▸ /bank [put / take] [сумма] — сейф\n▸ /pay @юзер [сумма] | /rob @юзер | /top",
+    "games": "🎰 ИГРЫ, VIP И КЛАНЫ\n━━━━━━━━━━━━━━━━━━\n▸ /casino [ставка/all] | /roulette [цвет] [ставка]\n▸ /dice [1-6] [ставка] | /case | /duel @юзер [ставка]\n▸ /hug | /slap | /kiss | /kill @юзер\n▸ /buyvip (10,000) | /clan [create/join/deposit/info/leave]\n\n🔰 СОЗДАТЕЛЯМ СООБЩЕСТВА:\n▸ /givemoney | /takemoney | /givevip | /takevip"
 }
 
 def is_group_creator(vk, user_id):
@@ -29,13 +29,13 @@ def is_group_creator(vk, user_id):
 
 def get_menu_kb():
     kb = VkKeyboard(inline=True)
+    kb.add_callback_button("🏷 Роли (1–100)", color=VkKeyboardColor.PRIMARY, payload={"menu": "roles"})
+    kb.add_callback_button("🛡 Модерация", color=VkKeyboardColor.NEGATIVE, payload={"menu": "mod"})
+    kb.add_line()
     kb.add_callback_button("👤 Основное", color=VkKeyboardColor.POSITIVE, payload={"menu": "general"})
-    kb.add_callback_button("💰 Экономика", color=VkKeyboardColor.PRIMARY, payload={"menu": "economy"})
+    kb.add_callback_button("💰 Экономика", color=VkKeyboardColor.SECONDARY, payload={"menu": "economy"})
     kb.add_line()
-    kb.add_callback_button("🎰 Игры и РП", color=VkKeyboardColor.SECONDARY, payload={"menu": "games"})
-    kb.add_callback_button("🛡 Модерация", color=VkKeyboardColor.SECONDARY, payload={"menu": "mod"})
-    kb.add_line()
-    kb.add_callback_button("👑 VIP и Кланы", color=VkKeyboardColor.NEGATIVE, payload={"menu": "vip"})
+    kb.add_callback_button("🎰 Игры / VIP / Кланы", color=VkKeyboardColor.SECONDARY, payload={"menu": "games"})
     return kb.get_keyboard()
 
 def send_help_menu(vk, peer_id, category="main", event_id=None, user_id=None):
@@ -50,8 +50,12 @@ def send_msg(vk, peer_id, text):
 def get_user(db, user_id):
     uid = str(user_id)
     if uid not in db["users"]:
-        db["users"][uid] = {"balance": 1000, "bank": 0, "last_bonus": 0, "last_work": 0, "last_rob": 0, "last_farm": 0, "farms": 0, "partner": None, "clan": None, "rep": 0, "vip": False}
-    return db["users"][uid]
+        db["users"][uid] = {"balance": 1000, "bank": 0, "last_bonus": 0, "last_work": 0, "last_rob": 0, "last_farm": 0, "last_biz": 0, "farms": 0, "biz": 0, "partner": None, "clan": None, "rep": 0, "vip": False}
+    u = db["users"][uid]
+    for k, v in [("biz", 0), ("last_biz", 0), ("farms", 0), ("last_farm", 0)]:
+        if k not in u:
+            u[k] = v
+    return u
 
 def get_name(vk, user_id):
     if user_id < 0:
@@ -89,49 +93,76 @@ def handle_fun(vk, db, save_db, msg_obj):
         vip_tag = "👑 VIP" if user.get("vip") else "Обычный"
         partner = get_name(vk, user["partner"]) if user.get("partner") else "Нет"
         clan = user.get("clan") or "Нет"
-        send_msg(vk, peer_id, f"🪪 ПРОФИЛЬ ИГРОКА\n━━━━━━━━━━━━━━\n👤 {get_name(vk, from_id)} [{vip_tag}]\n💵 Наличные: {user['balance']} | 🏦 Банк: {user.get('bank', 0)}\n🖥 Майнинг-ферм: {user.get('farms', 0)} шт.\n🏰 Клан: {clan} | 💍 Брак: {partner}\n⭐ Репутация: {user.get('rep', 0)}")
+        send_msg(vk, peer_id, f"🪪 ПАСПОРТ ИГРОКА\n━━━━━━━━━━━━━━━━━━\n👤 {get_name(vk, from_id)} [{vip_tag}]\n💵 Наличные: {user['balance']} | 🏦 Банк: {user.get('bank', 0)}\n🖥 Ферм: {user['farms']} шт. | 🏢 Бизнес: {user['biz']} ур.\n🏰 Клан: {clan} | 💍 Брак: {partner}\n⭐ Репутация: {user.get('rep', 0)}")
     elif cmd == "bonus":
         if now - user["last_bonus"] < 3600:
-            send_msg(vk, peer_id, f"⏳ Следующий бонус через {int((3600 - (now - user['last_bonus'])) // 60) + 1} мин.")
+            send_msg(vk, peer_id, f"⏳ До бонуса: {int((3600 - (now - user['last_bonus'])) // 60) + 1} мин.")
         else:
             rew = random.randint(500, 1200) * mult
             user["balance"] += rew
             user["last_bonus"] = now
             save_db(db)
-            send_msg(vk, peer_id, f"🎁 Ты забрал бонус: +{rew} монет!\n💰 Баланс: {user['balance']}")
+            send_msg(vk, peer_id, f"🎁 Бонус: +{rew} монет! Баланс: {user['balance']}")
     elif cmd == "work":
         if now - user.get("last_work", 0) < 600:
-            send_msg(vk, peer_id, f"⏳ Ты устал! Отдохни ещё {int((600 - (now - user['last_work'])) // 60) + 1} мин.")
+            send_msg(vk, peer_id, f"⏳ Отдохни ещё {int((600 - (now - user['last_work'])) // 60) + 1} мин.")
         else:
             pay = random.randint(250, 600) * mult
             user["balance"] += pay
             user["last_work"] = now
             save_db(db)
-            send_msg(vk, peer_id, f"💼 Отличная смена! Заработано +{pay} монет.\n💰 Баланс: {user['balance']}")
+            send_msg(vk, peer_id, f"💼 Заработано +{pay} монет! Баланс: {user['balance']}")
     elif cmd == "farm":
         sub = args.pop(0).lower() if args else ""
-        farms = user.get("farms", 0)
+        farms = user["farms"]
         if sub == "buy":
             cost = 1500 * (farms + 1)
             if user["balance"] < cost:
-                return send_msg(vk, peer_id, f"❌ Покупка фермы №{farms+1} стоит {cost} монет.")
+                return send_msg(vk, peer_id, f"❌ Ферма №{farms+1} стоит {cost} монет.")
             user["balance"] -= cost
-            user["farms"] = farms + 1
+            user["farms"] += 1
             save_db(db)
-            send_msg(vk, peer_id, f"🖥 Куплена майнинг-ферма №{user['farms']}! Доход: {user['farms']*250} монет/час.")
+            send_msg(vk, peer_id, f"🖥 Куплена ферма №{user['farms']}! Доход: {user['farms']*250} монет/час.")
         elif sub == "collect":
             if farms == 0:
-                return send_msg(vk, peer_id, "❌ У тебя нет ферм (/farm buy).")
-            hrs = int((now - user.get("last_farm", 0)) // 3600)
+                return send_msg(vk, peer_id, "❌ Нет ферм (/farm buy).")
+            hrs = int((now - user["last_farm"]) // 3600)
             if hrs < 1:
-                return send_msg(vk, peer_id, "⏳ Майнинг ещё идёт, приходи через час после прошлой сборки!")
+                return send_msg(vk, peer_id, "⏳ Майнинг идёт, приходи через час!")
             profit = min(hrs, 24) * farms * 250 * mult
             user["balance"] += profit
             user["last_farm"] = now
             save_db(db)
-            send_msg(vk, peer_id, f"⚡ Собрано с ферм: +{profit} монет! Баланс: {user['balance']}")
+            send_msg(vk, peer_id, f"⚡ Собрано: +{profit} монет! Баланс: {user['balance']}")
         else:
-            send_msg(vk, peer_id, f"🖥 Твои фермы: {farms} шт. ({farms*250} монет/час)\nКоманды: /farm buy | /farm collect")
+            send_msg(vk, peer_id, f"🖥 Ферм: {farms} шт. ({farms*250}/час)\nКоманды: /farm buy | /farm collect")
+    elif cmd == "biz":
+        sub = args.pop(0).lower() if args else ""
+        b = user["biz"]
+        names = ["Нет", "Ларёк с шаурмой", "Автомойка", "Ночной клуб", "IT-корпорация", "Нефтяная вышка"]
+        if sub == "buy":
+            if b >= 5:
+                return send_msg(vk, peer_id, "🏢 У тебя максимальный уровень бизнеса!")
+            cost = 4000 * (b + 1)
+            if user["balance"] < cost:
+                return send_msg(vk, peer_id, f"❌ Улучшение до «{names[b+1]}» стоит {cost} монет.")
+            user["balance"] -= cost
+            user["biz"] += 1
+            save_db(db)
+            send_msg(vk, peer_id, f"🏢 Куплен бизнес: «{names[user['biz']]}» (доход {user['biz']*600}/час)!")
+        elif sub == "collect":
+            if b == 0:
+                return send_msg(vk, peer_id, "❌ Нет бизнеса (/biz buy).")
+            hrs = int((now - user["last_biz"]) // 3600)
+            if hrs < 1:
+                return send_msg(vk, peer_id, "⏳ Выручка собирается раз в час!")
+            profit = min(hrs, 24) * b * 600 * mult
+            user["balance"] += profit
+            user["last_biz"] = now
+            save_db(db)
+            send_msg(vk, peer_id, f"💵 Выручка с «{names[b]}»: +{profit} монет!")
+        else:
+            send_msg(vk, peer_id, f"🏢 Бизнес: {names[b]} ({b*600}/час)\nКоманды: /biz buy | /biz collect")
     elif cmd == "bank":
         if len(args) < 2:
             return send_msg(vk, peer_id, "❌ Пример: /bank put 500 или /bank take 500")
@@ -143,7 +174,7 @@ def handle_fun(vk, db, save_db, msg_obj):
             user["balance"] -= amt
             user["bank"] = user.get("bank", 0) + amt
             save_db(db)
-            send_msg(vk, peer_id, f"🏦 В банке теперь: {user['bank']} монет.")
+            send_msg(vk, peer_id, f"🏦 В банке: {user['bank']} монет.")
         elif act == "take" and 0 < amt <= user.get("bank", 0):
             user["bank"] -= amt
             user["balance"] += amt
@@ -159,25 +190,3 @@ def handle_fun(vk, db, save_db, msg_obj):
         get_user(db, tid)["balance"] += amt
         user["balance"] -= amt
         save_db(db)
-        send_msg(vk, peer_id, f"✅ Переведено {amt} монет -> {get_name(vk, tid)}")
-    elif cmd == "rob":
-        tid = extract_target(msg_obj, args)
-        if not tid or tid == from_id or tid < 0 or now - user.get("last_rob", 0) < 1800:
-            return send_msg(vk, peer_id, "❌ Укажи цель (/rob @юзер) или подожди откат 30 мин.")
-        victim = get_user(db, tid)
-        user["last_rob"] = now
-        if victim["balance"] < 100:
-            return send_msg(vk, peer_id, "🤷 У жертвы пусто в карманах (деньги в банке защищены).")
-        if random.randint(1, 100) <= 40:
-            loot = random.randint(50, min(600, victim["balance"] // 2))
-            victim["balance"] -= loot
-            user["balance"] += loot
-            send_msg(vk, peer_id, f"🥷 Ограбление века! Украдено {loot} монет у {get_name(vk, tid)}!")
-        else:
-            fine = min(250, user["balance"])
-            user["balance"] -= fine
-            send_msg(vk, peer_id, f"🚓 Тебя поймала полиция! Штраф {fine} монет.")
-        save_db(db)
-    elif cmd == "top":
-        top_u = sorted(db["users"].items(), key=lambda x: x["balance"] + x.get("bank", 0), reverse=True)[:10]
-        lines = ["🏆 ТОП-10 МИЛЛИОНЕРОВ:", "━━━━━━━━━━━━━━"] + [f"{i}. {get_name(vk, int(uid))} — {u['balance'] + u.get('bank', 0)} монет" for i, (uid, u) in enumerate(top_u, 1)]
