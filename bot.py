@@ -6,14 +6,17 @@ from datetime import datetime
 
 # ═══════════ КОНФИГ ═══════════
 TOKEN = os.environ.get("VK_TOKEN", "")
+OWNER_ID = 734176092  # ТВОЙ ID — владелец бота
 DEVELOPERS = [int(x) for x in os.environ.get("DEVELOPERS", "734176092").split(",") if x]
+if OWNER_ID not in DEVELOPERS:
+    DEVELOPERS.append(OWNER_ID)
 PREFIX = "!"
 
 if not TOKEN:
     print("❌ VK_TOKEN не установлен в Render Environment!")
     raise SystemExit(1)
 
-print(f"✅ Токен загружен | Админы: {DEVELOPERS}")
+print(f"✅ Токен | Владелец: {OWNER_ID} | Админы: {DEVELOPERS}")
 
 # ═══════════ БД ═══════════
 DB_FILE = "db.json"
@@ -32,7 +35,7 @@ def get_user(uid):
     s = str(uid)
     if s not in DB["users"]:
         DB["users"][s] = {
-            "balance": 1000, "bank": 0, "xp": 0, "level": 0,
+            "balance": 1000, "bank": 0, "donate": 0, "xp": 0, "level": 0,
             "warns": 0, "reputation": 0, "business": None,
             "business_time": 0, "work_time": 0, "bonus_time": 0,
             "deposit": 0, "deposit_time": 0,
@@ -56,6 +59,9 @@ def extract_user(text):
 
 def is_admin(uid):
     return uid in DEVELOPERS
+
+def is_owner(uid):
+    return uid == OWNER_ID
 
 def fmt(n):
     try: return f"{int(n):,}".replace(",", " ")
@@ -102,7 +108,7 @@ HUNT_ITEMS = {"заяц": (100, 500), "лиса": (500, 2000), "волк": (2000
 TITLES = {"новичок": 0, "работяга": 100000, "бизнесмен": 1000000,
           "олигарх": 10000000, "магнат": 100000000, "легенда": 1000000000}
 
-# ═══════════ FLASK ═══════════
+# ═══════════ FLASK (для Render + UptimeRobot) ═══════════
 try:
     from flask import Flask
     app = Flask("")
@@ -110,7 +116,8 @@ try:
     def home(): return "🌟 Astra alive!"
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080), daemon=True).start()
     print("🌐 Flask :8080")
-except: pass
+except Exception as e:
+    print("⚠️ Flask:", e)
 
 # ═══════════ VK ═══════════
 vk_session = vk_api.VkApi(token=TOKEN)
@@ -144,13 +151,42 @@ def get_games_kb():
     kb.add_button("◀️ Назад", color=VkKeyboardColor.NEGATIVE)
     return kb.get_keyboard()
 
+def get_admin_kb():
+    kb = VkKeyboard(one_time=False)
+    kb.add_button("👑 Админинфо", color=VkKeyboardColor.PRIMARY)
+    kb.add_button("💵 Выдать баланс", color=VkKeyboardColor.POSITIVE)
+    kb.add_line()
+    kb.add_button("💎 Выдать донат", color=VkKeyboardColor.POSITIVE)
+    kb.add_button("🎁 Создать промо", color=VkKeyboardColor.POSITIVE)
+    kb.add_line()
+    kb.add_button("⚠️ Варн", color=VkKeyboardColor.NEGATIVE)
+    kb.add_button("🔇 Мут", color=VkKeyboardColor.NEGATIVE)
+    kb.add_line()
+    kb.add_button("🔄 Обнулить", color=VkKeyboardColor.NEGATIVE)
+    kb.add_button("◀️ Назад", color=VkKeyboardColor.SECONDARY)
+    return kb.get_keyboard()
+
 BUTTON_CMDS = {
-    "💰 Баланс": "баланс", "💼 Работа": "работа", "🏢 Бизнесы": "бизнесы",
-    "🎮 Игры": "игры", "👤 Профиль": "профиль", "📋 Помощь": "помощь",
-    "🎰 Казино 100": "казино", "🪙 Монетка 100": "монетка",
-    "🎲 Кости 100": "кости", "🎡 Колесо": "колесо",
-    "⛏️ Шахта": "шахта", "🎣 Рыбалка": "рыбалка",
-    "◀️ Назад": "назад",
+    "💰 Баланс": "баланс", "Баланс": "баланс",
+    "💼 Работа": "работа", "Работа": "работа",
+    "🏢 Бизнесы": "бизнесы", "Бизнесы": "бизнесы",
+    "🎮 Игры": "игры", "Игры": "игры",
+    "👤 Профиль": "профиль", "Профиль": "профиль",
+    "📋 Помощь": "помощь", "Помощь": "помощь",
+    "🎰 Казино 100": "казино", "Казино": "казино",
+    "🪙 Монетка 100": "монетка", "Монетка": "монетка",
+    "🎲 Кости 100": "кости", "Кости": "кости",
+    "🎡 Колесо": "колесо", "Колесо": "колесо",
+    "⛏️ Шахта": "шахта", "Шахта": "шахта",
+    "🎣 Рыбалка": "рыбалка", "Рыбалка": "рыбалка",
+    "👑 Админинфо": "админинфо_кнопка",
+    "💵 Выдать баланс": "выдатьбаланс_кнопка",
+    "💎 Выдать донат": "выдатьдонат_кнопка",
+    "🎁 Создать промо": "создатьпромо_кнопка",
+    "⚠️ Варн": "варн_кнопка",
+    "🔇 Мут": "мут_кнопка",
+    "🔄 Обнулить": "обнулить_кнопка",
+    "◀️ Назад": "назад", "Назад": "назад",
 }
 
 # ═══════════ ОТПРАВКА ═══════════
@@ -159,89 +195,133 @@ def send(peer_id, msg, kb=None):
     if kb is None:
         kb = get_kb()
     kw["keyboard"] = kb
-    try: vk.messages.send(**kw)
-    except Exception as e: print("Send err:", e)
+    try:
+        vk.messages.send(**kw)
+    except Exception as e:
+        print("Send err:", e)
 
-# ═══════════ ОБРАБОТКА ═══════════
+# ═══════════ ОБРАБОТКА КОМАНД ═══════════
 def handle(peer_id, user_id, cmd, args):
     u = get_user(user_id)
     target_id = extract_user(args) or user_id
     t = get_user(target_id)
 
-    # КНОПКИ
+    # ── КНОПКИ МЕНЮ ──
     if cmd in ("игры", "games"):
         return send(peer_id, "🎮 Выбери игру:", get_games_kb())
     if cmd == "назад":
         return send(peer_id, "📋 Главное меню:", get_kb())
 
-    # ПОМОЩЬ
-    if cmd in ("помощь", "help", "команды"):
+    # ── КНОПКИ АДМИНКИ (подсказки) ──
+    if cmd == "админинфо_кнопка":
+        return send(peer_id, "👑 Введи: !админинфо @id123", get_admin_kb())
+    if cmd == "выдатьбаланс_кнопка":
+        return send(peer_id, "💵 Введи: !выдатьбаланс @id123 сумма", get_admin_kb())
+    if cmd == "выдатьдонат_кнопка":
+        return send(peer_id, "💎 Введи: !выдатьдонат @id123 сумма", get_admin_kb())
+    if cmd == "создатьпромо_кнопка":
+        return send(peer_id, "🎁 Введи: !создатьпромо КОД balance 10000 50", get_admin_kb())
+    if cmd == "варн_кнопка":
+        return send(peer_id, "⚠️ Введи: !варн @id123", get_admin_kb())
+    if cmd == "мут_кнопка":
+        return send(peer_id, "🔇 Введи: !мут @id123 60", get_admin_kb())
+    if cmd == "обнулить_кнопка":
+        return send(peer_id, "🔄 Введи: !обнулить @id123", get_admin_kb())
+
+    # ── АДМИН-ПАНЕЛЬ ──
+    if cmd in ("админка", "admin", "панель"):
+        if not is_admin(user_id):
+            return send(peer_id, "🚫 Доступ только для админов бота")
         return send(peer_id,
-            "🌟 𝗔𝘀𝘁𝗿𝗮 • Чат-менеджер\n\n"
+            f"👑 𝗔𝗱𝗺𝗶𝗻-𝗣𝗮𝗻𝗲𝗹𝘆\n\n"
+            f"👤 Ты: [id{user_id}|{get_name(user_id)}]\n"
+            f"👑 Статус: {'ВЛАДЕЛЕЦ' if is_owner(user_id) else 'Админ'}\n\n"
+            f"Выбери действие кнопкой или командой:",
+            get_admin_kb())
+
+    # ── ПОМОЩЬ ──
+    if cmd in ("помощь", "help", "команды"):
+        txt = ("🌟 𝗔𝘀𝘁𝗿𝗮 • ИМБА-БОТ v4.0\n\n"
             "💰 Экономика:\n  !баланс !работа !бонус !ежедневка\n"
             "  !бизнесы !купить !доход !продать\n"
             "  !банк !положить !снять !депозит !забрать !перевод\n\n"
             "🏪 Магазин:\n  !машины !дома !яхты !телефоны\n"
             "  !питомцы !фермы !кейсы\n\n"
-            "🎮 Игры:\n  !казино [ставка] !монетка [ставка]\n"
-            "  !кости [ставка] !рулетка [ставка] !краш [ставка]\n"
-            "  !угадай <1-10> [ставка] !кнб <камень/ножницы/бумага>\n"
-            "  !дуэль @id !лотерея !колесо\n\n"
+            "🎮 Игры:\n  !казино !монетка !кости !рулетка !краш\n"
+            "  !угадай !кнб !дуэль !лотерея !колесо\n\n"
             "⛏️ Активности:\n  !шахта !рыбалка !охота !ферма\n"
             "  !покормить !поиграть\n\n"
-            "💍 Социал:\n  !репа @id !брак @id !развод\n"
-            "  !друзья !подарить @id сумма\n"
-            "  !клан !создатьклан <название>\n\n"
-            "👤 Профиль:\n  !профиль !топ !стата !титул <название>\n"
-            "  !инвентарь !достижения\n\n"
+            "💍 Социал:\n  !репа @id !брак @id !развод !друзья\n"
+            "  !подарить @id сумма !клан !создатьклан\n\n"
+            "👤 Профиль:\n  !профиль !топ !стата !титул !инвентарь\n"
+            "  !достижения !донат\n\n"
             "🎁 Промо:\n  !активировать <код> !списокпромо\n\n"
-            "🛡️ Админ:\n  !варн !мут !снятьмут !снятьварн !кик !бан\n"
-            "  !выдатьбаланс !забратьбаланс !выдатьуровень\n"
-            "  !выдатьбизнес !выдатьимущество !обнулить\n"
-            "  !создатьпромо !админинфо",
-            get_kb())
+            "🛡️ Модерация:\n  !варн !мут !снятьмут !снятьварн !кик !бан\n\n"
+            "👑 Админ-панель:\n  !админка !админинфо @id\n"
+            "  !выдатьбаланс !забратьбаланс\n"
+            "  !выдатьдонат !забратьдонат\n"
+            "  !выдатьуровень !выдатьрепу\n"
+            "  !выдатьбизнес !забратьбизнес\n"
+            "  !выдатьимущество !обнулить\n"
+            "  !создатьпромо !удалитьпромо\n"
+            "  !добавитьадмина !списокадминов")
+        if is_admin(user_id):
+            return send(peer_id, txt + "\n\n👑 У тебя открыта админ-панель: !админка", get_admin_kb())
+        return send(peer_id, txt, get_kb())
 
-    if cmd in ("о боте", "about", "инфо"):
+    if cmd in ("о боте", "about"):
         return send(peer_id,
-            f"🌟 𝗔𝘀𝘁𝗿𝗮 v2.0\n👥 Пользователей: {fmt(len(DB['users']))}\n"
-            f"🎁 Промо: {len(DB['promo'])}\n🏰 Кланов: {len(DB.get('clans', {}))}")
+            f"🌟 𝗔𝘀𝘁𝗿𝗮 v4.0 ИМБА\n👑 Владелец: [id{OWNER_ID}|{get_name(OWNER_ID)}]\n"
+            f"👥 Юзеров: {fmt(len(DB['users']))}\n🎁 Промо: {len(DB['promo'])}\n"
+            f"🏰 Кланов: {len(DB.get('clans', {}))}")
 
-    # ЭКОНОМИКА
+    # ═══════════ ЭКОНОМИКА ═══════════
     if cmd in ("баланс", "balance", "счет"):
         warns_bar = "⚠️" * t["warns"] + "⚪" * max(0, 3 - t["warns"])
         title = ""
         for tn, tv in sorted(TITLES.items(), key=lambda x: x[1], reverse=True):
-            if t["balance"] >= tv: title = tn.capitalize(); break
+            if t["balance"] >= tv:
+                title = tn.capitalize()
+                break
+        crown = "\n👑 ВЛАДЕЛЕЦ БОТА" if target_id == OWNER_ID else ""
         return send(peer_id,
-            f"💰 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 • [id{target_id}|{get_name(target_id)}]\n\n"
-            f"💵 {fmt(t['balance'])} ₽\n🏦 {fmt(t['bank'])} ₽\n"
+            f"💰 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 • [id{target_id}|{get_name(target_id)}]{crown}\n\n"
+            f"💵 {fmt(t['balance'])} ₽\n🏦 {fmt(t['bank'])} ₽\n💎 Донат: {fmt(t['donate'])}\n"
             f"📊 Уровень {t['level']} ({t['xp']} XP)\n⭐ Реп: {t['reputation']}\n"
             f"🏆 {title or 'Новичок'}\n🏢 {t['business'] or '—'}\n"
             f"🚗 {t['car'] or '—'} | 🏠 {t['house'] or '—'}\n"
             f"⚠️ {warns_bar} ({t['warns']}/3)\n💬 {t['messages_count']}",
             get_kb())
 
+    if cmd in ("донат", "donate"):
+        return send(peer_id, f"💎 Твой донат: {fmt(u['donate'])}\n\nДонат выдаёт владелец: !админка")
+
     if cmd in ("работа", "work"):
         if time.time() - u["work_time"] < 1800:
             return send(peer_id, f"⏳ Отдыхай ещё {int((1800-(time.time()-u['work_time']))//60)} мин.")
-        jobs = ["программистом", "строителем", "врачом", "таксистом", "поваром", "дизайнером"]
+        jobs = ["программистом", "строителем", "врачом", "таксистом", "поваром", "дизайнером", "блогером"]
         job = random.choice(jobs)
         earn = 200 + u["level"] * 20 + random.randint(0, 100)
-        u["balance"] += earn; u["work_time"] = int(time.time()); save_db()
-        return send(peer_id, f"💼 Поработал {job}. Заработал {fmt(earn)} ₽")
+        u["balance"] += earn
+        u["work_time"] = int(time.time())
+        save_db()
+        return send(peer_id, f"💼 Поработал {job}. +{fmt(earn)} ₽")
 
     if cmd in ("бонус", "bonus", "ежедневка", "daily"):
         if time.time() - u["daily_time"] < 86400:
             return send(peer_id, f"⏳ Через {int((86400-(time.time()-u['daily_time']))//3600)} ч.")
         b = 500 + u["level"] * 100
-        u["balance"] += b; u["daily_time"] = int(time.time()); save_db()
+        u["balance"] += b
+        u["daily_time"] = int(time.time())
+        save_db()
         return send(peer_id, f"🎁 Ежедневка: {fmt(b)} ₽")
 
     if cmd in ("бизнесы", "businesses"):
         txt = "🏢 𝗕𝗶𝘇𝗻𝗲𝘀𝘀\n\n"
         for n, b in BUSINESSES.items():
             txt += f"• {n} — {fmt(b['price'])} ₽ ({fmt(b['income'])}/ч)"
-            if u["business"] == n: txt += " ✅"
+            if u["business"] == n:
+                txt += " ✅"
             txt += "\n"
         return send(peer_id, txt + "\n!купить <название>")
 
@@ -249,35 +329,29 @@ def handle(peer_id, user_id, cmd, args):
         n = args.lower().strip()
         if n in BUSINESSES:
             b = BUSINESSES[n]
-            if u["balance"] < b["price"]: return send(peer_id, "💸")
+            if u["balance"] < b["price"]: return send(peer_id, "💸 Не хватает")
             if u["business"]: return send(peer_id, "Уже есть бизнес")
             u["balance"] -= b["price"]; u["business"] = n; u["business_time"] = int(time.time())
             save_db(); return send(peer_id, f"🎉 Куплен бизнес «{n}»!")
-        elif n in CARS:
+        if n in CARS:
             if u["balance"] < CARS[n]: return send(peer_id, "💸")
-            u["balance"] -= CARS[n]; u["car"] = n; save_db()
-            return send(peer_id, f"🚗 Куплено: {n}")
-        elif n in HOUSES:
+            u["balance"] -= CARS[n]; u["car"] = n; save_db(); return send(peer_id, f"🚗 Куплено: {n}")
+        if n in HOUSES:
             if u["balance"] < HOUSES[n]: return send(peer_id, "💸")
-            u["balance"] -= HOUSES[n]; u["house"] = n; save_db()
-            return send(peer_id, f"🏠 Куплено: {n}")
-        elif n in YACHTS:
+            u["balance"] -= HOUSES[n]; u["house"] = n; save_db(); return send(peer_id, f"🏠 Куплено: {n}")
+        if n in YACHTS:
             if u["balance"] < YACHTS[n]: return send(peer_id, "💸")
-            u["balance"] -= YACHTS[n]; u["yacht"] = n; save_db()
-            return send(peer_id, f"🚢 Куплено: {n}")
-        elif n in PHONES:
+            u["balance"] -= YACHTS[n]; u["yacht"] = n; save_db(); return send(peer_id, f"🚢 Куплено: {n}")
+        if n in PHONES:
             if u["balance"] < PHONES[n]: return send(peer_id, "💸")
-            u["balance"] -= PHONES[n]; u["phone"] = n; save_db()
-            return send(peer_id, f"📱 Куплено: {n}")
-        elif n in PETS:
+            u["balance"] -= PHONES[n]; u["phone"] = n; save_db(); return send(peer_id, f"📱 Куплено: {n}")
+        if n in PETS:
             if u["balance"] < PETS[n]: return send(peer_id, "💸")
-            u["balance"] -= PETS[n]; u["pet"] = n; save_db()
-            return send(peer_id, f"🐾 Питомец: {n}")
-        elif n in FARMS:
+            u["balance"] -= PETS[n]; u["pet"] = n; save_db(); return send(peer_id, f"🐾 Питомец: {n}")
+        if n in FARMS:
             if u["balance"] < FARMS[n]: return send(peer_id, "💸")
-            u["balance"] -= FARMS[n]; u["farm"] = n; save_db()
-            return send(peer_id, f"🌾 Ферма: {n}")
-        return send(peer_id, "❌ !машины !дома !яхты !телефоны !питомцы !фермы")
+            u["balance"] -= FARMS[n]; u["farm"] = n; save_db(); return send(peer_id, f"🌾 Ферма: {n}")
+        return send(peer_id, "❌ Смотри: !машины !дома !яхты !телефоны !питомцы !фермы")
 
     if cmd in ("продать", "sell"):
         n = args.lower().strip()
@@ -298,7 +372,7 @@ def handle(peer_id, user_id, cmd, args):
     if cmd in ("доход", "income"):
         if not u["business"]: return send(peer_id, "Нет бизнеса")
         h = int((time.time() - u["business_time"]) // 3600)
-        if h < 1: return send(peer_id, "Рано")
+        if h < 1: return send(peer_id, "Рано собирать")
         e = BUSINESSES[u["business"]]["income"] * h
         u["balance"] += e; u["business_time"] = int(time.time()); save_db()
         return send(peer_id, f"💵 Доход: {fmt(e)} ₽")
@@ -346,33 +420,28 @@ def handle(peer_id, user_id, cmd, args):
         except: return send(peer_id, "❌ Сумма")
         if amt < 100 or u["balance"] < amt: return send(peer_id, "💸")
         tax = int(amt * 0.05)
-        u["balance"] -= amt; tt = get_user(tg); tt["balance"] += amt - tax
-        save_db(); return send(peer_id, f"✅ Переведено {fmt(amt-tax)} ₽ (комиссия {fmt(tax)})")
+        u["balance"] -= amt
+        tt = get_user(tg); tt["balance"] += amt - tax
+        save_db()
+        return send(peer_id, f"✅ Переведено {fmt(amt-tax)} ₽ (комиссия {fmt(tax)})")
 
-    # МАГАЗИН
+    # ═══════════ МАГАЗИН ═══════════
     if cmd in ("машины", "cars"):
-        txt = "🚗 𝗠𝗮𝗰𝗵𝗶𝗻𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in CARS.items())
-        return send(peer_id, txt + "\n!купить <название>")
+        return send(peer_id, "🚗 𝗠𝗮𝗰𝗵𝗶𝗻𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in CARS.items()) + "\n!купить <название>")
     if cmd in ("дома", "houses"):
-        txt = "🏠 𝗗𝗼𝗺𝗮\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in HOUSES.items())
-        return send(peer_id, txt)
+        return send(peer_id, "🏠 𝗗𝗼𝗺𝗮\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in HOUSES.items()))
     if cmd in ("яхты", "yachts"):
-        txt = "🚢 𝗬𝗮𝗵𝘁𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in YACHTS.items())
-        return send(peer_id, txt)
+        return send(peer_id, "🚢 𝗬𝗮𝗵𝘁𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in YACHTS.items()))
     if cmd in ("телефоны", "phones"):
-        txt = "📱 𝗧𝗲𝗹𝗲𝗳𝗼𝗻𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in PHONES.items())
-        return send(peer_id, txt)
+        return send(peer_id, "📱 𝗧𝗲𝗹𝗲𝗳𝗼𝗻𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in PHONES.items()))
     if cmd in ("питомцы", "pets"):
-        txt = "🐾 𝗣𝗶𝘁𝗼𝗺𝗰𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in PETS.items())
-        return send(peer_id, txt + "\n!покормить !поиграть")
+        return send(peer_id, "🐾 𝗣𝗶𝘁𝗼𝗺𝗰𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in PETS.items()) + "\n!покормить !поиграть")
     if cmd in ("фермы", "farms"):
-        txt = "🌾 𝗙𝗲𝗿𝗺𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n,p in FARMS.items())
-        return send(peer_id, txt)
+        return send(peer_id, "🌾 𝗙𝗲𝗿𝗺𝘆\n" + "\n".join(f"• {n} — {fmt(p)} ₽" for n, p in FARMS.items()))
     if cmd in ("кейсы", "cases"):
-        txt = "🎁 𝗞𝗲𝗶𝘀𝘆\n" + "\n".join(f"• {n} — {fmt(c['price'])} ₽ ({fmt(c['min'])}-{fmt(c['max'])})" for n,c in CASES.items())
-        return send(peer_id, txt + "\n!кейс <название>")
+        return send(peer_id, "🎁 𝗞𝗲𝗶𝘀𝘆\n" + "\n".join(f"• {n} — {fmt(c['price'])} ₽ ({fmt(c['min'])}-{fmt(c['max'])})" for n, c in CASES.items()) + "\n!кейс <название>")
 
-    # КЕЙС / ИНВЕНТАРЬ
+    # ═══════════ КЕЙСЫ / ИНВЕНТАРЬ ═══════════
     if cmd in ("кейс", "case", "открыть"):
         n = args.lower().strip()
         if n not in CASES: return send(peer_id, "❌ " + ", ".join(CASES.keys()))
@@ -383,30 +452,30 @@ def handle(peer_id, user_id, cmd, args):
         u["balance"] += win
         item = random.choice(list(MINE_ITEMS.keys()) + list(FISH_ITEMS.keys()))
         u["inventory"][item] = u["inventory"].get(item, 0) + 1
-        save_db(); return send(peer_id, f"🎁 Кейс «{n}»\n💰 {fmt(win)} ₽\n📦 {item}")
+        save_db()
+        return send(peer_id, f"🎁 Кейс «{n}»\n💰 {fmt(win)} ₽\n📦 {item}")
 
     if cmd in ("инвентарь", "inventory", "вещи"):
         if not u["inventory"]: return send(peer_id, "📦 Пусто")
-        txt = "📦 𝗜𝗻𝘃𝗲𝗻𝘁𝗼𝗿𝘆\n" + "\n".join(f"• {i} × {c}" for i,c in u["inventory"].items())
-        return send(peer_id, txt)
+        return send(peer_id, "📦 𝗜𝗻𝘃𝗲𝗻𝘁𝗼𝗿𝘆\n" + "\n".join(f"• {i} × {c}" for i, c in u["inventory"].items()))
 
     if cmd == "продать":
         p = args.split()
         if len(p) < 2: return send(peer_id, "❌ !продать <предмет> <кол-во>")
         item, count = p[0], int(p[1])
         if item not in u["inventory"] or u["inventory"][item] < count:
-            return send(peer_id, "❌ Нет")
+            return send(peer_id, "❌ Нет столько")
         price = 0
         for d in [MINE_ITEMS, FISH_ITEMS, HUNT_ITEMS]:
             if item in d: price = d[item][1]
-        if price == 0: return send(peer_id, "❌")
+        if price == 0: return send(peer_id, "❌ Нельзя продать")
         earn = price * count
         u["inventory"][item] -= count
         if u["inventory"][item] <= 0: del u["inventory"][item]
         u["balance"] += earn; save_db()
         return send(peer_id, f"💰 Продано за {fmt(earn)} ₽")
 
-    # АКТИВНОСТИ
+    # ═══════════ АКТИВНОСТИ ═══════════
     if cmd in ("шахта", "mine", "копать"):
         item, (mn, mx) = random.choice(list(MINE_ITEMS.items()))
         earn = random.randint(mn, mx)
@@ -439,7 +508,7 @@ def handle(peer_id, user_id, cmd, args):
         u["pet_happiness"] = min(100, u["pet_happiness"] + 30); save_db()
         return send(peer_id, f"🎾 {u['pet']} счастье: {u['pet_happiness']}%")
 
-    # ИГРЫ
+    # ═══════════ ИГРЫ ═══════════
     if cmd in ("монетка", "coin", "flip"):
         bet = int(args) if args else 100
         if bet < 50 or u["balance"] < bet: return send(peer_id, "💸")
@@ -453,12 +522,12 @@ def handle(peer_id, user_id, cmd, args):
     if cmd in ("казино", "slots", "casino", "слоты"):
         bet = int(args) if args else 100
         if bet < 100 or u["balance"] < bet: return send(peer_id, "💸")
-        s = [random.choice(["🍒","🍋","🔔","⭐","7️⃣"]) for _ in range(3)]
-        if s[0]==s[1]==s[2]:
-            mult = 10 if s[0]=="7️⃣" else 5
-            u["balance"] += bet*mult; u["games_won"] += 1
+        s = [random.choice(["🍒", "🍋", "🔔", "⭐", "7️⃣"]) for _ in range(3)]
+        if s[0] == s[1] == s[2]:
+            mult = 10 if s[0] == "7️⃣" else 5
+            u["balance"] += bet * mult; u["games_won"] += 1
             send(peer_id, f"{''.join(s)} ДЖЕКПОТ ×{mult}! +{fmt(bet*mult)} ₽")
-        elif s[0]==s[1] or s[1]==s[2] or s[0]==s[2]:
+        elif s[0] == s[1] or s[1] == s[2] or s[0] == s[2]:
             u["balance"] += bet; u["games_won"] += 1
             send(peer_id, f"{''.join(s)} +{fmt(bet)} ₽")
         else:
@@ -509,25 +578,24 @@ def handle(peer_id, user_id, cmd, args):
         if bet < 100 or u["balance"] < bet: return send(peer_id, "💸")
         num = random.randint(1, 10)
         if guess == num:
-            win = bet*5; u["balance"] += win; u["games_won"] += 1
+            win = bet * 5; u["balance"] += win; u["games_won"] += 1
             send(peer_id, f"🎯 Было {num}. +{fmt(win)} ₽")
         else:
             u["balance"] -= bet; u["games_lost"] += 1
             send(peer_id, f"🎯 Было {num}. -{fmt(bet)} ₽")
         save_db(); return
     if cmd in ("кнб", "rps"):
-        if args.lower() not in ("камень","ножницы","бумага"):
+        if args.lower() not in ("камень", "ножницы", "бумага"):
             return send(peer_id, "❌ !кнб <камень/ножницы/бумага>")
-        bot_c = random.choice(["камень","ножницы","бумага"])
-        wins = {"камень":"ножницы","ножницы":"бумага","бумага":"камень"}
+        bot_c = random.choice(["камень", "ножницы", "бумага"])
+        wins = {"камень": "ножницы", "ножницы": "бумага", "бумага": "камень"}
         if args.lower() == bot_c:
             return send(peer_id, f"🤝 Ничья. Бот: {bot_c}")
-        elif wins[args.lower()] == bot_c:
+        if wins[args.lower()] == bot_c:
             u["balance"] += 100; u["games_won"] += 1; save_db()
             return send(peer_id, f"✅ Бот: {bot_c}. +100 ₽")
-        else:
-            u["balance"] -= 100; u["games_lost"] += 1; save_db()
-            return send(peer_id, f"❌ Бот: {bot_c}. -100 ₽")
+        u["balance"] -= 100; u["games_lost"] += 1; save_db()
+        return send(peer_id, f"❌ Бот: {bot_c}. -100 ₽")
     if cmd in ("дуэль", "duel"):
         tg = extract_user(args)
         if not tg or tg == user_id: return send(peer_id, "❌ !дуэль @id123")
@@ -535,10 +603,10 @@ def handle(peer_id, user_id, cmd, args):
         if u["balance"] < bet or tt["balance"] < bet: return send(peer_id, f"💸 Нужно {fmt(bet)}")
         u["balance"] -= bet; tt["balance"] -= bet
         if random.choice([True, False]):
-            u["balance"] += bet*2; u["games_won"] += 1
+            u["balance"] += bet * 2; u["games_won"] += 1
             send(peer_id, f"⚔️ Победил [id{tg}]! +{fmt(bet*2)} ₽")
         else:
-            tt["balance"] += bet*2; u["games_lost"] += 1
+            tt["balance"] += bet * 2; u["games_lost"] += 1
             send(peer_id, f"⚔️ [id{tg}] победил!")
         save_db(); return
     if cmd in ("лотерея", "lottery"):
@@ -558,7 +626,7 @@ def handle(peer_id, user_id, cmd, args):
         u["balance"] += win; u["spin_time"] = int(time.time()); save_db()
         return send(peer_id, f"🎡 Выпало: {fmt(win)} ₽!")
 
-    # СОЦИАЛ
+    # ═══════════ СОЦИАЛ ═══════════
     if cmd in ("репа", "rep", "репутация"):
         tg = extract_user(args)
         if not tg or tg == user_id: return send(peer_id, "❌ !репа @id123")
@@ -595,7 +663,7 @@ def handle(peer_id, user_id, cmd, args):
     if cmd in ("клан", "clan"):
         if u["clan_id"] == 0: return send(peer_id, "Ты не в клане. !создатьклан <название>")
         clan = DB["clans"].get(str(u["clan_id"]), {})
-        return send(peer_id, f"🏰 {clan.get('name','?')}\n💰 {fmt(clan.get('balance',0))} ₽")
+        return send(peer_id, f"🏰 {clan.get('name', '?')}\n💰 {fmt(clan.get('balance', 0))} ₽")
     if cmd in ("создатьклан", "createclan"):
         name = args.strip()
         if not name: return send(peer_id, "❌ !создатьклан <название>")
@@ -607,15 +675,18 @@ def handle(peer_id, user_id, cmd, args):
         u["clan_id"] = cid; save_db()
         return send(peer_id, f"🏰 Клан «{name}» создан!")
 
-    # ПРОФИЛЬ
+    # ═══════════ ПРОФИЛЬ / ТОП ═══════════
     if cmd in ("профиль", "profile", "я"):
-        warns_bar = "⚠️"*t["warns"] + "⚪"*max(0, 3-t["warns"])
+        warns_bar = "⚠️" * t["warns"] + "⚪" * max(0, 3 - t["warns"])
         title = ""
         for tn, tv in sorted(TITLES.items(), key=lambda x: x[1], reverse=True):
-            if t["balance"] >= tv: title = tn.capitalize(); break
+            if t["balance"] >= tv:
+                title = tn.capitalize()
+                break
+        crown = "\n👑 ВЛАДЕЛЕЦ БОТА" if target_id == OWNER_ID else ""
         return send(peer_id,
-            f"👤 [id{target_id}|{get_name(target_id)}]\n\n"
-            f"💰 {fmt(t['balance'])} ₽\n🏦 {fmt(t['bank'])} ₽\n"
+            f"👤 [id{target_id}|{get_name(target_id)}]{crown}\n\n"
+            f"💰 {fmt(t['balance'])} ₽\n🏦 {fmt(t['bank'])} ₽\n💎 {fmt(t['donate'])}\n"
             f"📊 Ур. {t['level']} ({t['xp']} XP)\n⭐ {t['reputation']}\n"
             f"🏆 {title or 'Новичок'}\n🏢 {t['business'] or '—'}\n"
             f"🚗 {t['car'] or '—'} | 🏠 {t['house'] or '—'}\n"
@@ -624,16 +695,16 @@ def handle(peer_id, user_id, cmd, args):
             get_kb())
     if cmd in ("топ", "top"):
         rows = sorted(DB["users"].items(), key=lambda x: x[1]["balance"], reverse=True)[:10]
-        medals = ["🥇","🥈","🥉"]
+        medals = ["🥇", "🥈", "🥉"]
         txt = "🏆 𝗧𝗼𝗽-10\n\n"
-        for i,(uid,d) in enumerate(rows, 1):
-            m = medals[i-1] if i<=3 else f"{i}."
+        for i, (uid, d) in enumerate(rows, 1):
+            m = medals[i-1] if i <= 3 else f"{i}."
             txt += f"{m} [id{uid}|{get_name(int(uid))}] — {fmt(d['balance'])} ₽\n"
         return send(peer_id, txt)
     if cmd in ("топ уровень", "toplevel"):
         rows = sorted(DB["users"].items(), key=lambda x: x[1]["level"], reverse=True)[:10]
         txt = "📊 𝗧𝗼𝗽 𝗽𝗼 𝘂𝗿𝗼𝘃𝗻𝘆\n\n"
-        for i,(uid,d) in enumerate(rows, 1):
+        for i, (uid, d) in enumerate(rows, 1):
             txt += f"{i}. [id{uid}] — ур. {d['level']}\n"
         return send(peer_id, txt)
     if cmd in ("стата", "stats", "статистика"):
@@ -641,7 +712,7 @@ def handle(peer_id, user_id, cmd, args):
         tm = sum(d["messages_count"] for d in DB["users"].values())
         return send(peer_id,
             f"📊 𝗦𝘁𝗮𝘁𝘀\n👥 {fmt(len(DB['users']))}\n💰 {fmt(tb)} ₽\n"
-            f"💬 {fmt(tm)}\n🎁 {len(DB['promo'])}\n🏰 {len(DB.get('clans',{}))}")
+            f"💬 {fmt(tm)}\n🎁 {len(DB['promo'])}\n🏰 {len(DB.get('clans', {}))}")
     if cmd in ("титул", "title"):
         n = args.lower().strip()
         if n not in TITLES: return send(peer_id, "❌ " + ", ".join(TITLES.keys()))
@@ -652,7 +723,7 @@ def handle(peer_id, user_id, cmd, args):
         if not u["achievements"]: return send(peer_id, "🏅 Пусто")
         return send(peer_id, "🏅 " + "\n".join(f"• {a}" for a in u["achievements"]))
 
-    # ПРОМО
+    # ═══════════ ПРОМОКОДЫ ═══════════
     if cmd in ("активировать", "промо", "promo", "promocode"):
         code = args.upper().strip()
         if not code: return send(peer_id, "❌ !активировать <код>")
@@ -664,263 +735,24 @@ def handle(peer_id, user_id, cmd, args):
         elif p["reward_type"] == "business":
             u["business"] = p["reward_value"]; msg = f"🏢 {p['reward_value']}"
         elif p["reward_type"] == "level":
-            u["level"] = int(p["reward_value"]); u["xp"] = u["level"]**2
+            u["level"] = int(p["reward_value"]); u["xp"] = u["level"] ** 2
             msg = f"📊 Уровень {p['reward_value']}"
+        elif p["reward_type"] == "donate":
+            u["donate"] += int(p["reward_value"]); msg = f"💎 +{fmt(p['reward_value'])}"
+        else:
+            msg = "🎁 Награда"
         p["uses_left"] -= 1; save_db()
         return send(peer_id, f"🎁 {msg}")
     if cmd in ("списокпромо", "promos"):
+        if not is_admin(user_id): return send(peer_id, "🚫")
         if not DB["promo"]: return send(peer_id, "🎁 Пусто")
-        txt = "🎁 𝗣𝗿𝗼𝗺𝗼\n" + "\n".join(f"• {c} — {p['reward_type']} {p['reward_value']} ({p['uses_left']} ост.)" for c,p in DB["promo"].items())
+        txt = "🎁 𝗣𝗿𝗼𝗺𝗼\n" + "\n".join(f"• {c} — {p['reward_type']} {p['reward_value']} ({p['uses_left']} ост.)" for c, p in DB["promo"].items())
         return send(peer_id, txt)
 
-    # РАЗВЛЕЧЕНИЯ
+    # ═══════════ РАЗВЛЕЧЕНИЯ ═══════════
     if cmd in ("анекдот", "joke"):
         jokes = [
             "— Почему программисты путают Хэллоуин и Рождество?\n— Oct 31 == Dec 25",
             "Заходит улитка в бар, бармен её выгоняет. Через год: 'Зачем ты так?'",
             "— Сири, почему я одинок?\n— *открывает фронталку*",
-            "Жена: 'Купи батон. Если будут яйца — десяток.'\nВернулся с 10 батонами."
-        ]
-        return send(peer_id, "😄 " + random.choice(jokes))
-    if cmd in ("факт", "fact"):
-        facts = [
-            "Мёд не портится. Находили съедобный в гробницах фараонов.",
-            "Осьминоги имеют 3 сердца и голубую кровь.",
-            "Бананы — ягоды, клубника — нет.",
-            "Человек проводит 6 месяцев жизни, ожидая зелёный свет.",
-            "Сердце креветки в голове."
-        ]
-        return send(peer_id, "🧠 " + random.choice(facts))
-    if cmd in ("цитата", "quote"):
-        quotes = [
-            "«Будь собой; прочие роли заняты.» — Уайльд",
-            "«Делай великие дела — люби что делаешь.» — Джобс",
-            "«Будущее за теми, кто верит в мечты.» — Рузвельт"
-        ]
-        return send(peer_id, random.choice(quotes))
-    if cmd in ("8ball", "шар", "предсказание"):
-        return send(peer_id, f"🎱 {random.choice(['Да','Нет','Возможно','Точно да','Точно нет','Спроси позже','100%'])}")
-    if cmd in ("погода", "weather"):
-        return send(peer_id, f"🌤️ {random.choice(['☀️ Ясно','⛅ Облачно','🌧️ Дождь','❄️ Снег'])}, {random.randint(-10,30)}°C")
-    if cmd in ("совместимость", "compat"):
-        tg = extract_user(args)
-        if not tg: return send(peer_id, "❌ !совместимость @id123")
-        return send(peer_id, f"💕 [id{user_id}] + [id{tg}]: {random.randint(0,100)}%")
-
-    # МОДЕРАЦИЯ
-    if cmd in ("варн", "warn"):
-        if not is_admin(user_id): return send(peer_id, "🚫 Только админ")
-        tg = extract_user(args)
-        if not tg: return send(peer_id, "❌ !варн @id123")
-        tt = get_user(tg); tt["warns"] += 1; save_db()
-        send(peer_id, f"⚠️ [id{tg}] варн ({tt['warns']}/3)")
-        if tt["warns"] >= 3:
-            tt["muted_until"] = int(time.time()) + 3600; tt["warns"] = 0; save_db()
-            send(peer_id, f"🚫 [id{tg}] мут 1ч за 3 варна")
-        return
-    if cmd in ("мут", "mute"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split(); tg = extract_user(p[0]) if p else None
-        if not tg: return send(peer_id, "❌ !мут @id123 [мин]")
-        mins = int(p[1]) if len(p)>1 else 60
-        get_user(tg)["muted_until"] = int(time.time()) + mins*60; save_db()
-        return send(peer_id, f"🔇 [id{tg}] мут {mins} мин")
-    if cmd in ("снятьмут", "unmute"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if tg: get_user(tg)["muted_until"] = 0; save_db(); send(peer_id, f"✅ Мут снят [id{tg}]")
-        return
-    if cmd in ("снятьварн", "unwarn"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if tg:
-            tt = get_user(tg); tt["warns"] = max(0, tt["warns"]-1); save_db()
-            send(peer_id, f"✅ Варн снят [id{tg}] ({tt['warns']} ост.)")
-        return
-    if cmd in ("кик", "kick", "бан", "ban"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if not tg: return send(peer_id, "❌ !кик @id123")
-        try:
-            vk.messages.removeChatUser(chat_id=peer_id-2000000000, user_id=tg)
-            send(peer_id, f"🔨 [id{tg}] удалён")
-        except Exception as e: send(peer_id, f"❌ {e}")
-        return
-
-    # АДМИН
-    if cmd in ("выдатьбаланс", "givebalance"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<2: return send(peer_id, "❌ !выдатьбаланс @id123 сумма")
-        tg = extract_user(p[0]); amt = int(p[1])
-        get_user(tg)["balance"] += amt; save_db()
-        return send(peer_id, f"✅ +{fmt(amt)} ₽ [id{tg}]")
-    if cmd in ("забратьбаланс", "takebalance"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<2: return send(peer_id, "❌ !забратьбаланс @id123 сумма")
-        tg = extract_user(p[0]); amt = int(p[1])
-        tt = get_user(tg); tt["balance"] = max(0, tt["balance"]-amt); save_db()
-        return send(peer_id, f"✅ -{fmt(amt)} ₽ у [id{tg}]")
-    if cmd in ("выдатьуровень", "givelevel"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<2: return send(peer_id, "❌ !выдатьуровень @id123 уровень")
-        tg = extract_user(p[0]); lv = int(p[1])
-        tt = get_user(tg); tt["level"] = lv; tt["xp"] = lv*lv; save_db()
-        return send(peer_id, f"✅ Уровень {lv} [id{tg}]")
-    if cmd in ("выдатьрепу", "giverep"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<2: return send(peer_id, "❌ !выдатьрепу @id123 кол-во")
-        tg = extract_user(p[0]); amt = int(p[1])
-        get_user(tg)["reputation"] += amt; save_db()
-        return send(peer_id, f"✅ +{amt} репы [id{tg}]")
-    if cmd in ("выдатьбизнес", "givebusiness"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<2: return send(peer_id, "❌ !выдатьбизнес @id123 название")
-        tg = extract_user(p[0]); biz = p[1].lower()
-        if biz in BUSINESSES:
-            tt = get_user(tg); tt["business"] = biz; tt["business_time"] = int(time.time()); save_db()
-            return send(peer_id, f"✅ {biz} → [id{tg}]")
-        return send(peer_id, "❌ !бизнесы")
-    if cmd in ("забратьбизнес", "takebusiness"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if tg: get_user(tg)["business"] = None; save_db(); send(peer_id, f"✅ Бизнес забран [id{tg}]")
-        return
-    if cmd in ("выдатьимущество", "giveproperty"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<3: return send(peer_id, "❌ !выдатьимущество @id123 тип название\n(car/house/yacht/phone/pet)")
-        tg = extract_user(p[0]); typ = p[1].lower(); nm = p[2].lower()
-        tt = get_user(tg)
-        maps = {"car": ("car", CARS), "house": ("house", HOUSES), "yacht": ("yacht", YACHTS),
-                "phone": ("phone", PHONES), "pet": ("pet", PETS)}
-        if typ in maps:
-            key, d = maps[typ]
-            if nm in d:
-                tt[key] = nm; save_db(); return send(peer_id, f"✅ {nm} → [id{tg}]")
-        return send(peer_id, "❌")
-    if cmd in ("обнулить", "reset"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if not tg: return send(peer_id, "❌ !обнулить @id123")
-        DB["users"][str(tg)] = {
-            "balance":1000,"bank":0,"xp":0,"level":0,"warns":0,"reputation":0,
-            "business":None,"business_time":0,"work_time":0,"bonus_time":0,
-            "deposit":0,"deposit_time":0,"car":None,"house":None,"yacht":None,
-            "phone":None,"pet":None,"pet_hunger":100,"pet_happiness":100,
-            "farm":None,"farm_time":0,"married_to":0,"clan_id":0,"inventory":{},
-            "achievements":[],"muted_until":0,"messages_count":0,"games_won":0,
-            "games_lost":0,"title":None,"daily_time":0,"spin_time":0,"friends":[],
-            "nickname":None,"bio":None,"last_seen":0,"register_time":int(time.time())
-        }
-        save_db(); return send(peer_id, f"✅ [id{tg}] обнулён")
-    if cmd in ("админинфо", "admininfo"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if not tg: return send(peer_id, "❌ !админинфо @id123")
-        tt = get_user(tg)
-        return send(peer_id,
-            f"👤 [id{tg}|{get_name(tg)}]\n\n"
-            f"💰 {fmt(tt['balance'])} ₽\n🏦 {fmt(tt['bank'])} ₽\n"
-            f"📊 Ур. {tt['level']} ({tt['xp']} XP)\n⚠️ {tt['warns']}/3\n"
-            f"⭐ {tt['reputation']}\n🏢 {tt['business'] or '—'}\n"
-            f"🚗 {tt['car'] or '—'} | 🏠 {tt['house'] or '—'}\n"
-            f"🚢 {tt['yacht'] or '—'} | 📱 {tt['phone'] or '—'}\n"
-            f"🐾 {tt['pet'] or '—'} | 🌾 {tt['farm'] or '—'}\n"
-            f"💍 {tt['married_to'] or '—'} | 🏰 {tt['clan_id'] or '—'}\n"
-            f"📦 {len(tt['inventory'])} предметов\n⚔️ {tt['games_won']}W/{tt['games_lost']}L\n"
-            f"💬 {tt['messages_count']}\n🔇 {'да' if tt['muted_until']>time.time() else 'нет'}\n"
-            f"📅 {datetime.fromtimestamp(tt['register_time']).strftime('%d.%m.%Y')}")
-    if cmd in ("создатьпромо", "createpromo"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        p = args.split()
-        if len(p)<4:
-            return send(peer_id, "❌ !создатьпромо КОД balance|business|level ЗНАЧЕНИЕ КОЛ-ВО\nПример: !создатьпромо VIP2026 balance 10000 50")
-        code, rtype, rval, uses = p[0].upper(), p[1], p[2], int(p[3])
-        if rtype not in ("balance","business","level"):
-            return send(peer_id, "❌ Тип: balance / business / level")
-        DB["promo"][code] = {"reward_type":rtype,"reward_value":rval,"uses_left":uses,"creator":user_id,"created":int(time.time())}
-        save_db()
-        return send(peer_id, f"✅ Промо `{code}`\nТип: {rtype}\nЗначение: {rval}\nАктиваций: {uses}")
-    if cmd in ("удалитьпромо", "deletepromo"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        code = args.upper().strip()
-        if code in DB["promo"]:
-            del DB["promo"][code]; save_db(); return send(peer_id, f"✅ {code} удалён")
-        return send(peer_id, "❌")
-    if cmd in ("добавитьадмина", "addadmin"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        tg = extract_user(args)
-        if tg and tg not in DEVELOPERS:
-            DEVELOPERS.append(tg)
-            os.environ["DEVELOPERS"] = ",".join(map(str, DEVELOPERS))
-            return send(peer_id, f"✅ [id{tg}] теперь админ")
-        return send(peer_id, "❌")
-    if cmd in ("списокадминов", "admins"):
-        if not is_admin(user_id): return send(peer_id, "🚫")
-        return send(peer_id, "👑 Админы:\n" + "\n".join(f"• [id{a}]" for a in DEVELOPERS))
-
-
-# ═══════════ ГЛАВНЫЙ ЦИКЛ ═══════════
-print("="*50)
-print("🌟 Astra запущена и слушает события...")
-print("="*50)
-
-for event in longpoll.listen():
-    if event.type == VkEventType.MESSAGE_NEW:
-        print(f"📨 MSG | user={event.from_user} chat={event.from_chat} peer={event.peer_id} text='{event.text}'")
-
-        if not (event.from_user or event.from_chat):
-            print("   ⚠️ Пропуск")
-            continue
-
-        peer_id = event.peer_id
-        user_id = event.user_id
-        text = event.text.strip() if event.text else ""
-
-        u = get_user(user_id)
-        if u["muted_until"] > time.time():
-            try: vk.messages.delete(peer_id=peer_id, message_ids=event.message_id, delete_for_all=1)
-            except: pass
-            continue
-
-        u["xp"] += 5
-        u["messages_count"] += 1
-        u["last_seen"] = int(time.time())
-        nl = int(u["xp"] ** 0.5)
-        if nl > u["level"]:
-            u["level"] = nl
-            if event.from_user:
-                send(peer_id, f"🎉 Уровень {nl}!", get_kb())
-        save_db()
-
-        if not text:
-            continue
-
-        # Кнопка?
-        if text in BUTTON_CMDS:
-            cmd = BUTTON_CMDS[text]
-            print(f"   🎯 Кнопка: '{text}' → '{cmd}'")
-            try: handle(peer_id, user_id, cmd, "")
-            except Exception as e:
-                print(f"   ❌ {e}"); traceback.print_exc()
-            continue
-
-        # Команда?
-        if text.lower().startswith(PREFIX):
-            rest = text[1:].strip()
-            parts = rest.split(maxsplit=1)
-            cmd = parts[0].lower() if parts else ""
-            args = parts[1] if len(parts)>1 else ""
-            print(f"   ✅ Команда: '{cmd}' args='{args}'")
-            try: handle(peer_id, user_id, cmd, args)
-            except Exception as e:
-                print(f"   ❌ {e}"); traceback.print_exc()
-                send(peer_id, f"❌ Ошибка: {e}")
-
-        # MESSAGE_EVENT не поддерживается в Long Poll API
-    # (кнопки работают через обычный текст BUTTON_CMDS)
+            "Ж
