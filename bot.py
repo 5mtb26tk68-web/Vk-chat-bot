@@ -922,16 +922,5 @@ for event in longpoll.listen():
                 print(f"   ❌ {e}"); traceback.print_exc()
                 send(peer_id, f"❌ Ошибка: {e}")
 
-    elif event.type == VkEventType.MESSAGE_EVENT:
-        print(f"🔘 EVENT | {event.object}")
-        try:
-            payload = json.loads(event.object.payload) if event.object.payload else {}
-            cmd = payload.get("cmd", "")
-            if cmd: handle(event.peer_id, event.user_id, cmd, "")
-            vk.messages.sendMessageEventAnswer(
-                event_id=event.object.event_id,
-                user_id=event.user_id,
-                peer_id=event.peer_id
-            )
-        except Exception as e:
-            print(f"   ❌ Event err: {e}")
+        # MESSAGE_EVENT не поддерживается в Long Poll API
+    # (кнопки работают через обычный текст BUTTON_CMDS)
